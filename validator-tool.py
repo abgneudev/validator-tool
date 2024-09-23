@@ -9,11 +9,11 @@ import psycopg2
 
 try:
     conn = psycopg2.connect(
-        host="104.196.119.128",
-        port="5432",
-        user="postgres-user",
-        password="zqA#q>pv`h3UG.XH",
-        database="postgres"
+        host="XXX.XXX.XXX.XXX",
+        port="XXXX",
+        user="XXXXXXXX-XXXX",
+        password="XXXXXXXXXXXXXXXX",
+        database="XXXXXXXX"
     )
     
     cursor = conn.cursor()
