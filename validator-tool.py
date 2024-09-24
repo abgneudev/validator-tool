@@ -6,10 +6,18 @@ from sqlalchemy import create_engine
 import ast
 import openai 
 
+<<<<<<< Updated upstream
 
 # Integrating OpenAI API
 openai.api_key = 'Open_AI_API'
 
+=======
+
+# Integrating OpenAI API
+openai.api_key = 'Open_AI_API"
+
+# Function to get OpenAI response with optional steps for "Re-run Prompt"
+>>>>>>> Stashed changes
 def get_openai_response(question, steps=None):
     try:
         messages = [
@@ -47,11 +55,19 @@ def validate_input(input_value):
 # Connecting Database on GCP
 try:
     conn = psycopg2.connect(
+<<<<<<< Updated upstream
         host="104.196.119.128",
         port="5432",
         user="postgres-user",
         password="zqA#q>pv`h3UG.XH",
         database="postgres"
+=======
+        host="XXX.XXX..XXX",
+        port="XXXX",
+        user="XXXX-XXXX",
+        password="XXXXX#XXXX",
+        database="xxxxxx"
+>>>>>>> Stashed changes
     )
     
     cursor = conn.cursor()
@@ -73,12 +89,26 @@ if engine:
 else:
     df = pd.DataFrame()
 
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 # Sidebar Navigation
 if not df.empty:
     levels = ['All'] + sorted(df['level'].unique().tolist())
 else:
     levels = ['All']
+<<<<<<< Updated upstream
+
+selected_level = st.sidebar.selectbox("Select difficulty level:", levels)
+
+if selected_level != 'All' and not df.empty:
+    filtered_df = df[df['level'] == selected_level]
+    questions = filtered_df['question'].tolist()
+else:
+    questions = df['question'].tolist() if not df.empty else []
+=======
+>>>>>>> Stashed changes
 
 selected_level = st.sidebar.selectbox("Select difficulty level:", levels)
 
@@ -88,10 +118,15 @@ if selected_level != 'All' and not df.empty:
 else:
     questions = df['question'].tolist() if not df.empty else []
 
-col1, col2 = st.sidebar.columns([2,1])
+col1, col2 = st.sidebar.columns([2, 1])
 
 with col1:
+<<<<<<< Updated upstream
     dropdown_value = st.sidebar.selectbox("Choose a prompt to test", questions)
+=======
+    # Display dropdown with questions and clear ChatGPT Answer on selection change
+    dropdown_value = st.sidebar.selectbox("Choose a prompt to test", questions, on_change=lambda: st.session_state.update({'openai_response': ''}))
+>>>>>>> Stashed changes
 
 with col2:
     if st.sidebar.button("Randomize", key="randomize_button"):
@@ -185,3 +220,7 @@ with col1:
             st.rerun() 
         else:
             st.error("Please provide both a valid question and steps to re-run the prompt.")
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
