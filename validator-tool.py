@@ -6,9 +6,8 @@ from sqlalchemy import create_engine
 import ast
 import openai 
 
-
 # Integrating OpenAI API
-openai.api_key = 'Open_AI_API'
+openai.api_key = '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'
 
 def get_openai_response(question, steps=None):
     try:
@@ -40,9 +39,7 @@ def get_openai_response(question, steps=None):
         return f"Error fetching response: {str(e)}"
 
 def validate_input(input_value):
-    if not input_value:
-        return False
-    return True
+    return bool(input_value)
 
 # Connecting Database on GCP
 try:
@@ -61,6 +58,7 @@ try:
     engine = conn
 except Exception as e:
     engine = None
+    st.error(f"Database connection error: {str(e)}")
 
 # Queries
 if engine:
@@ -73,13 +71,12 @@ if engine:
 else:
     df = pd.DataFrame()
 
+st.header("Validator Tool")
+
+st.write('')
 
 # Sidebar Navigation
-if not df.empty:
-    levels = ['All'] + sorted(df['level'].unique().tolist())
-else:
-    levels = ['All']
-
+levels = ['All'] + sorted(df['level'].unique().tolist()) if not df.empty else ['All']
 selected_level = st.sidebar.selectbox("Select difficulty level:", levels)
 
 if selected_level != 'All' and not df.empty:
@@ -88,100 +85,82 @@ if selected_level != 'All' and not df.empty:
 else:
     questions = df['question'].tolist() if not df.empty else []
 
-col1, col2 = st.sidebar.columns([2,1])
+# Initialize session state for dropdown_value and openai_response
+if 'dropdown_value' not in st.session_state:
+    st.session_state.dropdown_value = questions[0] if questions else None
+if 'openai_response' not in st.session_state:
+    st.session_state.openai_response = "Run Prompt to get an answer from ChatGPT"
 
-with col1:
-    dropdown_value = st.sidebar.selectbox("Choose a prompt to test", questions)
+# Dropdown for question selection
+dropdown_value = st.sidebar.selectbox(
+    "Choose a prompt to test", 
+    questions, 
+    index=questions.index(st.session_state.dropdown_value) if st.session_state.dropdown_value in questions else 0,
+    key="question_dropdown"
+)
 
-with col2:
-    if st.sidebar.button("Randomize", key="randomize_button"):
-        if selected_level != 'All' and not df.empty:
-            filtered_questions = df[df['level'] == selected_level]['question'].tolist()
-        else:
-            filtered_questions = questions
-        
-        if filtered_questions:
-            dropdown_value = random.choice(filtered_questions)
-            if validate_input(dropdown_value):
-                openai_response = get_openai_response(dropdown_value)
-                st.session_state['openai_response'] = openai_response
-            else:
-                st.sidebar.error("No valid question selected.")
-        else:
-            st.sidebar.error("No questions available for the selected level.")
+# Update session state and reset ChatGPT answer if a new question is selected
+if dropdown_value != st.session_state.dropdown_value:
+    st.session_state.dropdown_value = dropdown_value
+    st.session_state.openai_response = "Run Prompt to get an answer from ChatGPT"
+
+# Randomize button
+if st.sidebar.button("Randomize", key="randomize_button"):
+    if questions:
+        st.session_state.dropdown_value = random.choice(questions)
+        st.session_state.openai_response = "Run Prompt to get an answer from ChatGPT"
+        st.rerun()
+    else:
+        st.sidebar.error("No questions available for the selected level.")
 
 st.sidebar.header("Prompt:")
-prompt_text = dropdown_value if dropdown_value else "No question selected"
+prompt_text = st.session_state.dropdown_value if st.session_state.dropdown_value else "No question selected"
 st.sidebar.write(prompt_text)
 
 if st.sidebar.button("Run Prompt", key="run_prompt_button"):
-    if validate_input(dropdown_value):
-        openai_response = get_openai_response(dropdown_value)
-        
-        st.session_state['openai_response'] = openai_response  
+    if validate_input(st.session_state.dropdown_value):
+        st.session_state.openai_response = "Fetching response from ChatGPT..."
+        openai_response = get_openai_response(st.session_state.dropdown_value)
+        st.session_state.openai_response = openai_response
     else:
         st.sidebar.error("Please select a valid question.")
+        st.session_state.openai_response = "Run Prompt to get an answer from ChatGPT"
 
 col1, col2 = st.columns(2)
 
-if not df.empty:
-    if selected_level != 'All':
-        filtered_df = df[df['level'] == selected_level]
-    else:
-        filtered_df = df
-    question_answer_dict = dict(zip(filtered_df['question'], filtered_df['final_answer']))
-    final_answer = question_answer_dict.get(dropdown_value, "No final answer found.")
-else:
-    final_answer = "No data available."
+question_answer_dict = dict(zip(df['question'], df['final_answer'])) if not df.empty else {}
+final_answer = question_answer_dict.get(st.session_state.dropdown_value, "No final answer found.")
 
 # Main Section
-st.header("Validator Tool")
-
-st.write('')
-
-response_placeholder = st.empty()
-
 with col1:
     st.markdown("##### Actual Answer")
     st.write(final_answer)
 
 with col2:
     st.markdown("##### ChatGPT Answer")
-    if 'openai_response' in st.session_state:
-        st.write(st.session_state['openai_response'])
-    else:
-        st.write("No response yet. Click 'Run Prompt' to get an answer.")
+    st.write(st.session_state.openai_response)
 
 st.divider()
 
-if not df.empty:
-    if selected_level != 'All':
-        filtered_df = df[df['level'] == selected_level]
-    else:
-        filtered_df = df
-    question_steps_dict = dict(zip(filtered_df['question'], filtered_df['annotator_metadata']))
-    annotator_data_str = question_steps_dict.get(dropdown_value, "{}")
-    try:
-        annotator_data = ast.literal_eval(annotator_data_str)
-    except ValueError:
-        annotator_data = {}
+question_steps_dict = dict(zip(df['question'], df['annotator_metadata'])) if not df.empty else {}
+annotator_data_str = question_steps_dict.get(st.session_state.dropdown_value, "{}")
+try:
+    annotator_data = ast.literal_eval(annotator_data_str)
+except ValueError:
+    annotator_data = {}
 
-    steps = annotator_data.get('Steps', "No steps found.")
-else:
-    steps = "No steps available."
+steps = annotator_data.get('Steps', "No steps found.")
 
 st.markdown("##### Steps followed:")
-steps = st.text_area("Edit these steps and run again if validation fails", steps)
+steps = st.text_area("Edit these steps and run again if validation fails", steps, height=250)
 
-col1, col2 = st.columns([2,1])
-
-with col1:
-    if st.button("Re-run Prompt", key="re_run_prompt_button"):
-        if validate_input(dropdown_value) and validate_input(steps):
-            re_run_response = get_openai_response(dropdown_value, steps)
-
-            st.session_state['openai_response'] = re_run_response
-
-            st.rerun() 
-        else:
-            st.error("Please provide both a valid question and steps to re-run the prompt.")
+if st.button("Re-run Prompt", key="re_run_prompt_button"):
+    if validate_input(st.session_state.dropdown_value) and validate_input(steps):
+        st.session_state.openai_response = "Fetching response from ChatGPT..."
+        # re_run_response = get_openai_response(st.session_state.dropdown_value, steps)
+        re_run_response = get_openai_response(steps)
+        st.session_state.openai_response = re_run_response
+        st.rerun()
+    else:
+        st.error("Please provide both a valid question and steps to re-run the prompt.")
+        st.session_state.openai_response = "Run Prompt to get an answer from ChatGPT"
