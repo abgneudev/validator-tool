@@ -8,7 +8,7 @@ import openai
 import numpy as np
 
 # Integrating OpenAI API
-openai.api_key = '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'
+openai.api_key = 'XXXXXXXX'
 
 def get_openai_response(question, steps=None):
     try:
@@ -46,11 +46,11 @@ def validate_input(input_value):
 # Connecting Database on GCP
 try:
     conn = psycopg2.connect(
-        host="104.196.119.128",
-        port="5432",
-        user="postgres-user",
-        password="zqA#q>pv`h3UG.XH",
-        database="postgres"
+        host="XXXXXX",
+        port="XXXXXX",
+        user="XXXXXX",
+        password="XXXXXX",
+        database="XXXXXX"
     )
     
     cursor = conn.cursor()
