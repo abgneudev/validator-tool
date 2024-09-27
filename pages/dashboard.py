@@ -1,12 +1,12 @@
 import streamlit as st
 import pandas as pd
 import psycopg2
-from sqlalchemy import create_engine
+import matplotlib.pyplot as plt
 import plotly.express as px
+from sqlalchemy import create_engine
 from validator import df
 
-import matplotlib.pyplot as plt
-
+# DB Connections
 try:
     conn = psycopg2.connect(
         host="104.196.119.128",
@@ -36,7 +36,6 @@ if engine:
 else:
     df_tasks = pd.DataFrame()
 
-
 if engine:
     try:
         query = 'SELECT * FROM gaia.executions'
@@ -57,6 +56,8 @@ if engine:
 else:
     df_stepruns = pd.DataFrame()
 
+
+# Token Metrics
 total_prompts = df['task_id'].nunique()
 prompts_tested = df_tasks['req_id'].nunique()
 
@@ -100,72 +101,44 @@ st.sidebar.markdown(f"""
 
 # Main Section
 
-# Database connection setup
-try:
-    conn = psycopg2.connect(
-        host="104.196.119.128",
-        port="5432",
-        user="postgres-user",
-        password="zqA#q>pv`h3UG.XH",
-        database="postgres"
-    )
-    
-    cursor = conn.cursor()
-    cursor.execute("SELECT version();")
-    record = cursor.fetchone()
-    
-    engine = conn
-except Exception as e:
-    engine = None
-    st.error(f"Database connection error: {str(e)}")
-
-# Load data from database
-def load_data():
-    if engine:
-        try:
-            df_tasks = pd.read_sql('SELECT * FROM gaia.tasks', conn)
-            df_executions = pd.read_sql('SELECT * FROM gaia.executions', conn)
-            df_stepruns = pd.read_sql('SELECT * FROM gaia.stepruns', conn)
-            return df_tasks, df_executions, df_stepruns
-        except Exception as e:
-            st.sidebar.error(f"Error executing query: {str(e)}")
-            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-    else:
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-
-df_tasks, df_executions, df_stepruns = load_data()
-
+## Steps Frequency Line Chart & Pie Chart for Matched Answers vs Non-Matched Answers
 if not df_tasks.empty and not df_executions.empty and not df_stepruns.empty:
-    st.header("Execution vs Step Runs by Level")
+    st.header("Step Run Frequency Across Different Prompts")
+    
     levels = ['All'] + sorted(df_tasks['level'].unique().tolist())
     selected_level = st.selectbox("Select difficulty level:", levels)
 
     if selected_level != 'All':
-        filtered_df = df_stepruns[df_stepruns['execution_id'].isin(
-            df_executions[df_executions['req_id'].isin(
-                df_tasks[df_tasks['level'] == selected_level]['req_id']
-            )]['execution_id']
+        filtered_executions = df_executions[df_executions['req_id'].isin(
+            df_tasks[df_tasks['level'] == selected_level]['req_id']
         )]
     else:
-        filtered_df = df_stepruns
+        filtered_executions = df_executions
+
+    filtered_df = df_stepruns[df_stepruns['execution_id'].isin(filtered_executions['execution_id'])]
 
     execution_counts = filtered_df.groupby('execution_id').size().reset_index(name='step_runs')
-    
-    fig_line = px.line(execution_counts, x='execution_id', y='step_runs', title=f'Executions vs Step Runs for Level {selected_level}')
-    st.plotly_chart(fig_line)
 
-    st.header("Match vs Non-Match Percentage")
-    match_data = df_stepruns.groupby('ismatch').size().reset_index(name='counts')
-    match_data['status'] = match_data['ismatch'].map({True: 'Matches', False: 'Non-Matches'})
+    col1, col2 = st.columns(2)
 
-    fig_pie = px.pie(match_data, values='counts', names='status', title='Percentage of Matches vs Non-Matches')
-    st.plotly_chart(fig_pie)
+    with col1:
+        fig_line = px.line(execution_counts, x='execution_id', y='step_runs', title=f'Executions vs Step Runs for Level {selected_level}')
+        st.plotly_chart(fig_line)
 
-    st.header("Unique Prompts with Highest Re-Runs")
-    
+    with col2:
+        match_data = filtered_df.groupby('ismatch').size().reset_index(name='counts')
+        match_data['status'] = match_data['ismatch'].map({True: 'Matches', False: 'Non-Matches'})
+
+        fig_pie = px.pie(match_data, values='counts', names='status', title='Match vs Non-Match Percentage')
+        st.plotly_chart(fig_pie)
+
+## Prompts with most number of re-runs
+if not df_tasks.empty and not df_executions.empty and not df_stepruns.empty:
+    st.header("Which Prompts Have the Highest Re-Runs?")
+
     executions_with_prompts = df_executions.merge(df_tasks[['req_id', 'prompt', 'level']], on='req_id')
 
-    re_run_counts_by_execution = (df_stepruns.groupby('execution_id').size().reset_index(name='re_run_count'))
+    re_run_counts_by_execution = df_stepruns.groupby('execution_id').size().reset_index(name='re_run_count')
 
     executions_with_re_runs = executions_with_prompts.merge(re_run_counts_by_execution, on='execution_id')
 

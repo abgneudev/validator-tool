@@ -9,7 +9,7 @@ import numpy as np
 import tiktoken
 
 # Integrating OpenAI API
-openai.api_key = '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'
+openai.api_key = 'OPENAI_API_KEY'
 
 def get_openai_response(question, steps=None):
     try:
@@ -53,11 +53,11 @@ def count_tokens(text, model_name='gpt-4'):
 # Connecting Database on GCP
 try:
     conn = psycopg2.connect(
-        host="104.196.119.128",
-        port="5432",
-        user="postgres-user",
-        password="zqA#q>pv`h3UG.XH",
-        database="postgres"
+        host="XXX.XXX.XXX.XXX",
+        port="XXXX",
+        user="XXXXXXXX-XXXX",
+        password="XXXX",
+        database="XXXXXXXX"
     )
     
     cursor = conn.cursor()
@@ -144,7 +144,7 @@ def update_step_run_match(step_run_id, is_match):
         conn.rollback()
         return False
 
-# UI
+# User Interface
 st.header("Validator Tool")
 
 st.write('')
@@ -153,6 +153,7 @@ st.write('')
 levels = ['All'] + sorted(df['level'].unique().tolist()) if not df.empty else ['All']
 selected_level = st.sidebar.selectbox("Select difficulty level:", levels)
 
+## Select Level
 if selected_level != 'All' and not df.empty:
     filtered_df = df[df['level'] == selected_level]
     questions = filtered_df['question'].tolist()
@@ -168,6 +169,7 @@ if 'execution_id' not in st.session_state:
 if 'step_run_id' not in st.session_state:
     st.session_state.step_run_id = None
 
+## Select Prompt
 dropdown_value = st.sidebar.selectbox(
     "Choose a prompt to test", 
     questions, 
@@ -181,6 +183,7 @@ if dropdown_value != st.session_state.dropdown_value:
     st.session_state.execution_id = None
     st.session_state.step_run_id = None
 
+## Randomly Choose Prompts
 if st.sidebar.button("Randomize", key="randomize_button"):
     if questions:
         st.session_state.dropdown_value = random.choice(questions)
@@ -191,10 +194,12 @@ if st.sidebar.button("Randomize", key="randomize_button"):
     else:
         st.sidebar.error("No questions available for the selected level.")
 
+## Prompt Text
 st.sidebar.header("Prompt:")
 prompt_text = st.session_state.dropdown_value if st.session_state.dropdown_value else "No question selected"
 st.sidebar.write(prompt_text)
 
+## Run Prompt Button
 if st.sidebar.button("Run Prompt", key="run_prompt_button"):
     if validate_input(st.session_state.dropdown_value):
         st.session_state.openai_response = "Fetching response from ChatGPT..."
@@ -208,9 +213,7 @@ if st.sidebar.button("Run Prompt", key="run_prompt_button"):
         total_tokens = input_tokens_count + output_tokens_count
         
         st.sidebar.write(f"Total Input Tokens: {input_tokens_count}")
-        
         st.sidebar.write(f"Total Output Tokens: {output_tokens_count}")
-        
         st.sidebar.write(f"Total Tokens Used: {total_tokens}")
         
         st.session_state.openai_response = openai_response
@@ -227,15 +230,11 @@ if st.sidebar.button("Run Prompt", key="run_prompt_button"):
         
         if req_id is not None:
             execution_id = insert_execution(req_id, input_tokens_count, output_tokens_count, total_tokens)
-            
             if execution_id:
                 st.session_state.execution_id = execution_id
-                
                 st.sidebar.success(f"Execution recorded with ID: {execution_id}")
-                
             else:
-                st.sidebar.error("Failed to record execution")
-                
+                st.sidebar.error("Failed to record execution")     
     else:
         st.sidebar.error("Please select a valid question.")
 
@@ -262,6 +261,7 @@ try:
 except ValueError:
     annotator_data = {}
 
+## Button for storing matched answers
 if st.button("Answers Match", key="answers_match_button"):
     if st.session_state.step_run_id:
         if update_step_run_match(st.session_state.step_run_id, True):
@@ -278,6 +278,8 @@ z = dropdown_value+'\n'+'\n'+steps
 st.markdown("##### Steps followed:")
 steps = st.text_area("Edit these steps and run again if validation fails", z, height=300)
 
+
+## Button for running prompts again
 if st.button("Re-run Prompt", key="re_run_prompt_button"):
     if validate_input(st.session_state.dropdown_value) and validate_input(steps):
         st.session_state.openai_response = "Fetching response from ChatGPT..."
