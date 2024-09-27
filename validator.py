@@ -7,7 +7,7 @@ import ast
 import openai 
 
 # Integrating OpenAI API
-openai.api_key = 'XXXXXXXXXXXX'
+openai.api_key = 'OPEN_API_KEY'
 
 def get_openai_response(question, steps=None):
     try:
@@ -44,11 +44,11 @@ def validate_input(input_value):
 # Connecting Database on GCP
 try:
     conn = psycopg2.connect(
-        host="XXXX",
-        port="XXXX",
-        user="XXXXXX",
-        password="XXXXXX",
-        database="XXXXXX"
+        host="XXX",
+        port="XXX",
+        user="XXX",
+        password="XXX",
+        database="XXX"
     )
     
     cursor = conn.cursor()
@@ -151,8 +151,10 @@ except ValueError:
 
 steps = annotator_data.get('Steps', "No steps found.")
 
+z = dropdown_value+'\n'+'\n'+steps
+
 st.markdown("##### Steps followed:")
-steps = st.text_area("Edit these steps and run again if validation fails", steps, height=250)
+steps = st.text_area("Edit these steps and run again if validation fails", z, height=300)
 
 if st.button("Re-run Prompt", key="re_run_prompt_button"):
     if validate_input(st.session_state.dropdown_value) and validate_input(steps):
@@ -163,4 +165,4 @@ if st.button("Re-run Prompt", key="re_run_prompt_button"):
         st.rerun()
     else:
         st.error("Please provide both a valid question and steps to re-run the prompt.")
-        st.session_state.openai_response = "Run Prompt to get an answer from ChatGPT"
+        st.session_state.openai_response = "Run Prompt to get an answer from ChatGPT"
