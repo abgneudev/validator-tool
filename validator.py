@@ -5,9 +5,10 @@ import psycopg2
 from sqlalchemy import create_engine
 import ast
 import openai 
+import numpy as np
 
 # Integrating OpenAI API
-openai.api_key = 'OPEN_API_KEY'
+openai.api_key = 'XXXXXXXX'
 
 def get_openai_response(question, steps=None):
     try:
@@ -28,7 +29,8 @@ def get_openai_response(question, steps=None):
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=messages,
-            temperature=0.2 if steps else 0.5,
+            temperature=0.5,
+            # temperature=0.2 if steps else 0.5,
             max_tokens=1000 if steps else 2048,
             top_p=1,
             frequency_penalty=0.5 if steps else 0,
@@ -44,11 +46,11 @@ def validate_input(input_value):
 # Connecting Database on GCP
 try:
     conn = psycopg2.connect(
-        host="XXX",
-        port="XXX",
-        user="XXX",
-        password="XXX",
-        database="XXX"
+        host="XXXXXX",
+        port="XXXXXX",
+        user="XXXXXX",
+        password="XXXXXX",
+        database="XXXXXX"
     )
     
     cursor = conn.cursor()
@@ -71,6 +73,73 @@ if engine:
 else:
     df = pd.DataFrame()
 
+# Data Loading Functions
+def get_or_create_task(level, prompt, actual_answer):
+    try:
+        cursor.execute("SELECT req_id FROM gaia.tasks WHERE prompt = %s", (prompt,))
+        existing_task = cursor.fetchone()
+        
+        if existing_task:
+            return existing_task[0]
+        else:
+            cursor.execute("""
+                INSERT INTO gaia.tasks (level, prompt, actual_answer)
+                VALUES (%s, %s, %s)
+                RETURNING req_id
+            """, (level, prompt, actual_answer))
+            new_req_id = cursor.fetchone()[0]
+            conn.commit()
+            return new_req_id
+    except Exception as e:
+        st.sidebar.error(f"Error in get_or_create_task: {e}")
+        conn.rollback()
+        return None
+
+def insert_execution(req_id):
+    try:
+        cursor.execute("""
+            INSERT INTO gaia.executions (req_id)
+            VALUES (%s)
+            RETURNING execution_id
+        """, (req_id,))
+        execution_id = cursor.fetchone()[0]
+        conn.commit()
+        return execution_id
+    except Exception as e:
+        st.sidebar.error(f"Error inserting into executions table: {e}")
+        conn.rollback()
+        return None
+
+def insert_step_run(execution_id, steps, generated_answer):
+    try:
+        cursor.execute("""
+            INSERT INTO gaia.stepruns (execution_id, steps, generated_answer, isMatch)
+            VALUES (%s, %s, %s, %s)
+            RETURNING step_run_id
+        """, (execution_id, steps, generated_answer, False))
+        step_run_id = cursor.fetchone()[0]
+        conn.commit()
+        return step_run_id
+    except Exception as e:
+        st.sidebar.error(f"Error inserting into stepruns table: {e}")
+        conn.rollback()
+        return None
+
+def update_step_run_match(step_run_id, is_match):
+    try:
+        cursor.execute("""
+            UPDATE gaia.stepruns
+            SET isMatch = %s
+            WHERE step_run_id = %s
+        """, (is_match, step_run_id))
+        conn.commit()
+        return True
+    except Exception as e:
+        st.sidebar.error(f"Error updating stepruns table: {e}")
+        conn.rollback()
+        return False
+
+# UI
 st.header("Validator Tool")
 
 st.write('')
@@ -85,13 +154,15 @@ if selected_level != 'All' and not df.empty:
 else:
     questions = df['question'].tolist() if not df.empty else []
 
-# Initialize session state for dropdown_value and openai_response
 if 'dropdown_value' not in st.session_state:
     st.session_state.dropdown_value = questions[0] if questions else None
 if 'openai_response' not in st.session_state:
     st.session_state.openai_response = "Run Prompt to get an answer from ChatGPT"
+if 'execution_id' not in st.session_state:
+    st.session_state.execution_id = None
+if 'step_run_id' not in st.session_state:
+    st.session_state.step_run_id = None
 
-# Dropdown for question selection
 dropdown_value = st.sidebar.selectbox(
     "Choose a prompt to test", 
     questions, 
@@ -99,16 +170,18 @@ dropdown_value = st.sidebar.selectbox(
     key="question_dropdown"
 )
 
-# Update session state and reset ChatGPT answer if a new question is selected
 if dropdown_value != st.session_state.dropdown_value:
     st.session_state.dropdown_value = dropdown_value
     st.session_state.openai_response = "Run Prompt to get an answer from ChatGPT"
+    st.session_state.execution_id = None
+    st.session_state.step_run_id = None
 
-# Randomize button
 if st.sidebar.button("Randomize", key="randomize_button"):
     if questions:
         st.session_state.dropdown_value = random.choice(questions)
         st.session_state.openai_response = "Run Prompt to get an answer from ChatGPT"
+        st.session_state.execution_id = None
+        st.session_state.step_run_id = None
         st.rerun()
     else:
         st.sidebar.error("No questions available for the selected level.")
@@ -122,6 +195,23 @@ if st.sidebar.button("Run Prompt", key="run_prompt_button"):
         st.session_state.openai_response = "Fetching response from ChatGPT..."
         openai_response = get_openai_response(st.session_state.dropdown_value)
         st.session_state.openai_response = openai_response
+
+        selected_question = st.session_state.dropdown_value
+        question_data = df[df['question'] == selected_question].iloc[0]
+        level = int(question_data['level']) if isinstance(question_data['level'], np.integer) else question_data['level']
+        actual_answer = question_data['final_answer']
+
+        req_id = get_or_create_task(level, selected_question, actual_answer)
+        
+        if req_id is not None:
+            execution_id = insert_execution(req_id)
+            if execution_id:
+                st.session_state.execution_id = execution_id
+                st.sidebar.success(f"Execution recorded with ID: {execution_id}")
+            else:
+                st.sidebar.error("Failed to record execution")
+        else:
+            st.sidebar.error("Failed to get or create task")
     else:
         st.sidebar.error("Please select a valid question.")
         st.session_state.openai_response = "Run Prompt to get an answer from ChatGPT"
@@ -149,6 +239,15 @@ try:
 except ValueError:
     annotator_data = {}
 
+if st.button("Answers Match", key="answers_match_button"):
+    if st.session_state.step_run_id:
+        if update_step_run_match(st.session_state.step_run_id, True):
+            st.success("Answers marked as matching!")
+        else:
+            st.error("Failed to update match status.")
+    else:
+        st.error("No active step run. Please re-run the prompt first.")
+
 steps = annotator_data.get('Steps', "No steps found.")
 
 z = dropdown_value+'\n'+'\n'+steps
@@ -159,9 +258,19 @@ steps = st.text_area("Edit these steps and run again if validation fails", z, he
 if st.button("Re-run Prompt", key="re_run_prompt_button"):
     if validate_input(st.session_state.dropdown_value) and validate_input(steps):
         st.session_state.openai_response = "Fetching response from ChatGPT..."
-        # re_run_response = get_openai_response(st.session_state.dropdown_value, steps)
         re_run_response = get_openai_response(steps)
         st.session_state.openai_response = re_run_response
+        
+        if st.session_state.execution_id:
+            step_run_id = insert_step_run(st.session_state.execution_id, steps, re_run_response)
+            if step_run_id:
+                st.session_state.step_run_id = step_run_id
+                st.sidebar.success(f"Step run recorded with ID: {step_run_id}")
+            else:
+                st.sidebar.error("Failed to record step run")
+        else:
+            st.sidebar.error("No active execution. Please run the prompt first.")
+        
         st.rerun()
     else:
         st.error("Please provide both a valid question and steps to re-run the prompt.")
