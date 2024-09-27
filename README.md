@@ -1,19 +1,3 @@
-# validator-tool
-
-A tool with Streamlit for Model evaluation team to select a validation test case from GAIA dataset and evaluate OpenAI model against the test case.
-
-WE ATTEST THAT WE HAVEN’T USED ANY OTHER STUDENTS’ WORK IN OUR ASSIGNMENT AND ABIDE BY THE POLICIES LISTED IN THE STUDENT HANDBOOK
-
-Team:
-Abhinav Gupta (002290559)
-Dhir Thacker (002819144)
-Nishita Matlani (002866323)
-
-
-Here’s the complete `README.md` in markdown format based on your requirements, with `data.py` and `dashboard.py` as the only files:
-
----
-
 # Assignment 2: Model Evaluation Tool using GAIA Dataset
 
 ## Project Overview
@@ -21,8 +5,8 @@ This repository contains the implementation of **Assignment 2**. It is designed 
 
 ### Live Application Links
 - **Deployed Application**: [Streamlit App Link](#)
-- **Google Colab Codelabs**: [Colab Notebook Link](#)
-- **GitHub Repository**: [GitHub Repo Link](#)
+- **Google Colab Codelabs**: [Colab Notebook Link](https://codelabs-preview.appspot.com/?file_id=19YlgUH63yH2j6AQJpKsnpPfrSXpMxl3QcXehr_eJwpY#0)
+- **GitHub Repository**: [GitHub Repo Link](https://github.com/abgneudev/validator-tool/edit/main/README.md)
 
 *(Replace `#` with the actual links post-deployment.)*
 
@@ -55,26 +39,26 @@ The main test case data is retrieved from the GAIA benchmark dataset, while supp
 
 ## Project Structure
 ```markdown
-├─ .streamlit/
-│  └─ Config files for Streamlit
-├─ .gitignore
-├─ README.md                  # Documentation file (you are here)
-├─ LICENSE                    # Licensing details
-├─ requirements.txt           # List of required dependencies
-├─ Architecture_Diagram.png   # Architecture Diagram for reference
-├─ data.py                    # Script for retrieving and processing data
-├─ dashboard.py               # Main script for running the Streamlit dashboard
+├── .streamlit/                            # Streamlit configuration files
+│   └── config.toml                         # Configuration file for customizing the Streamlit app
+├── __pycache__/                            # Compiled Python cache files for optimized performance
+├── images/                                 # Folder for storing project images and architecture diagrams
+├── myenv/                                  # Local virtual environment for managing dependencies
+├── pages/                                  # Contains multi-page implementation for the Streamlit app
+│   ├── data.py                             # Streamlit page to display the data
+│   └── dashboard.py                        # streamlit page for visualizations
+├── validation/                             # Folder for storing context data 
+├── .DS_Store                               # macOS-specific system file for storing folder attributes
+├── .gitignore                              # Specifies files and directories to be excluded from version control
+├── Architecture_Diagram.ipynb              # Jupyter notebook containing the architecture diagram - code 
+├── LICENSE                                 # Licensing details for the project
+├── README.md                               # Project documentation file
+├── huggingface_data_extraction.py          # Script for extracting data from the HuggingFace GAIA benchmark dataset
+├── requirements.txt                        # List of dependencies required for the project
+├── validation_data.csv                     # CSV file containing validation test cases
+├── validator.py                            # Main code file with cloud integration, GUI and openai api integration
 ```
 
-### **File Descriptions**
-- **`.streamlit/`**: Contains configuration files for the Streamlit application.
-- **`.gitignore`**: Specifies files and directories to be excluded from version control.
-- **`README.md`**: This documentation file, explaining the repository structure and usage.
-- **`LICENSE`**: Licensing details for the project.
-- **`requirements.txt`**: List of dependencies required for the project.
-- **`Architecture_Diagram.png`**: A visual representation of the project’s architecture.
-- **`data.py`**: Handles data retrieval from BigQuery, GCS, and integrates additional content.
-- **`dashboard.py`**: Main script for creating the Streamlit dashboard, including user interfaces for selecting test cases and visualizing the results.
 
 ## Instructions for Running Locally
 1. **Clone the repository**:  
@@ -105,8 +89,7 @@ The Streamlit application is deployed on [Streamlit Cloud](https://streamlit.io/
 *(Replace `#` with the actual link post-deployment.)*
 
 ## Documentation
-- **[Streamlit Documentation](https://docs.streamlit.io/)**: For more information on how to extend and modify the Streamlit application.
-- **GAIA Dataset on HuggingFace**: [GAIA Benchmark](https://huggingface.co/datasets/gaia-benchmark/GAIA).
+- **CodeLabs documentation**: [CodeLabs]([https://huggingface.co/datasets/gaia-benchmark/GAIA](https://codelabs-preview.appspot.com/?file_id=19YlgUH63yH2j6AQJpKsnpPfrSXpMxl3QcXehr_eJwpY#0)).
 - **OpenAI API Documentation**: [OpenAI API](https://openai.com/api/).
 
 ## Contribution
