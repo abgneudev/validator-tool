@@ -7,9 +7,20 @@ import ast
 import openai 
 import numpy as np
 import tiktoken
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Access the environment variables
+host = os.getenv("DB_HOST")
+port = os.getenv("DB_PORT")
+user = os.getenv("USER")
+password = os.getenv("PASSWORD")
+database = os.getenv("DATABASE")
 
 # Integrating OpenAI API
-openai.api_key = 'OPENAI_API_KEY'
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def get_openai_response(question, steps=None):
     try:
@@ -53,11 +64,11 @@ def count_tokens(text, model_name='gpt-4'):
 # Connecting Database on GCP
 try:
     conn = psycopg2.connect(
-        host="XXX.XXX.XXX.XXX",
-        port="XXXX",
-        user="XXXXXXXX-XXXX",
-        password="XXXX",
-        database="XXXXXXXX"
+        host=host,
+        port=port,
+        user=user,
+        password=password,
+        database=database
     )
     
     cursor = conn.cursor()

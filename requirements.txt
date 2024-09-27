@@ -1,2 +1,12 @@
-psycopg2-binary==2.9.9
-sqlalchemy==2.0.35
+streamlit
+random
+pandas
+psycopg2
+SQLAlchemy
+openai==0.28
+numpy
+tiktoken
+plotly
+matplotlib
+ast
+python-dotenv

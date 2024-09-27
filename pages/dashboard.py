@@ -3,17 +3,30 @@ import pandas as pd
 import psycopg2
 import matplotlib.pyplot as plt
 import plotly.express as px
+import os
 from sqlalchemy import create_engine
 from validator import df
+from dotenv import load_dotenv
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Access the environment variables
+host = os.getenv("DB_HOST")
+port = os.getenv("DB_PORT")
+user = os.getenv("USER")
+password = os.getenv("PASSWORD")
+database = os.getenv("DATABASE")
 
 # DB Connections
 try:
     conn = psycopg2.connect(
-        host="104.196.119.128",
-        port="5432",
-        user="postgres-user",
-        password="zqA#q>pv`h3UG.XH",
-        database="postgres"
+        host=host,
+        port=port,
+        user=user,
+        password=password,
+        database=database
     )
     
     cursor = conn.cursor()

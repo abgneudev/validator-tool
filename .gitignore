@@ -2,7 +2,8 @@
 _pycache_/
 
 # Ignore virtual environments
-env/
+.env
+.myenv
 
 # Ignore Streamlit secrets file
 .streamlit/secrets.toml
