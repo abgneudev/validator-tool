@@ -6,9 +6,10 @@ from sqlalchemy import create_engine
 import ast
 import openai 
 import numpy as np
+import tiktoken
 
 # Integrating OpenAI API
-openai.api_key = 'XXXXXXXX'
+openai.api_key = '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'
 
 def get_openai_response(question, steps=None):
     try:
@@ -43,14 +44,20 @@ def get_openai_response(question, steps=None):
 def validate_input(input_value):
     return bool(input_value)
 
+# Function to count tokens using tiktoken
+def count_tokens(text, model_name='gpt-4'):
+    encoding = tiktoken.encoding_for_model(model_name)
+    tokens = encoding.encode(text)
+    return len(tokens)
+
 # Connecting Database on GCP
 try:
     conn = psycopg2.connect(
-        host="XXXXXX",
-        port="XXXXXX",
-        user="XXXXXX",
-        password="XXXXXX",
-        database="XXXXXX"
+        host="104.196.119.128",
+        port="5432",
+        user="postgres-user",
+        password="zqA#q>pv`h3UG.XH",
+        database="postgres"
     )
     
     cursor = conn.cursor()
@@ -196,6 +203,16 @@ if st.sidebar.button("Run Prompt", key="run_prompt_button"):
         openai_response = get_openai_response(st.session_state.dropdown_value)
         st.session_state.openai_response = openai_response
 
+        input_tokens_count=count_tokens(st.session_state.dropdown_value) 
+        openai_response=get_openai_response(st.session_state.dropdown_value) 
+       
+        output_tokens_count=count_tokens(openai_response) 
+       
+        total_tokens=input_tokens_count+output_tokens_count 
+        st.sidebar.write(f"Total Input Tokens: {input_tokens_count}") 
+        st.sidebar.write(f"Total Output Tokens: {output_tokens_count}") 
+        st.sidebar.write(f"Total Tokens Used: {total_tokens}") 
+
         selected_question = st.session_state.dropdown_value
         question_data = df[df['question'] == selected_question].iloc[0]
         level = int(question_data['level']) if isinstance(question_data['level'], np.integer) else question_data['level']
@@ -258,9 +275,21 @@ steps = st.text_area("Edit these steps and run again if validation fails", z, he
 if st.button("Re-run Prompt", key="re_run_prompt_button"):
     if validate_input(st.session_state.dropdown_value) and validate_input(steps):
         st.session_state.openai_response = "Fetching response from ChatGPT..."
-        re_run_response = get_openai_response(steps)
-        st.session_state.openai_response = re_run_response
+
+        input_tokens_count = count_tokens(steps)
         
+        re_run_response = get_openai_response(steps)
+
+        output_tokens_count = count_tokens(re_run_response)
+        
+        total_tokens = input_tokens_count + output_tokens_count
+
+        st.session_state.re_run_input_tokens = input_tokens_count
+        st.session_state.re_run_output_tokens = output_tokens_count
+        st.session_state.re_run_total_tokens = total_tokens
+        
+        st.session_state.openai_response = re_run_response
+
         if st.session_state.execution_id:
             step_run_id = insert_step_run(st.session_state.execution_id, steps, re_run_response)
             if step_run_id:
@@ -270,8 +299,15 @@ if st.button("Re-run Prompt", key="re_run_prompt_button"):
                 st.sidebar.error("Failed to record step run")
         else:
             st.sidebar.error("No active execution. Please run the prompt first.")
-        
+
         st.rerun()
     else:
         st.error("Please provide both a valid question and steps to re-run the prompt.")
-        st.session_state.openai_response = "Run Prompt to get an answer from ChatGPT"
+        st.session_state.openai_response = "Run Prompt to get an answer from ChatGPT"
+
+if 're_run_input_tokens' in st.session_state:
+    st.write(f"Re-run Input Tokens: {st.session_state.re_run_input_tokens}")
+if 're_run_output_tokens' in st.session_state:
+    st.write(f"Re-run Output Tokens: {st.session_state.re_run_output_tokens}")
+if 're_run_total_tokens' in st.session_state:
+    st.write(f"Total Re-run Tokens Used: {st.session_state.re_run_total_tokens}")
