@@ -9,7 +9,7 @@ import numpy as np
 import tiktoken
 
 # Integrating OpenAI API
-openai.api_key = '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'
+openai.api_key = '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'
 
 def get_openai_response(question, steps=None):
     try:
