@@ -102,13 +102,11 @@ def get_or_create_task(level, prompt, actual_answer):
         conn.rollback()
         return None
 
-def insert_execution(req_id):
+def insert_execution(req_id, input_token, output_token, total_tokens):
     try:
         cursor.execute("""
-            INSERT INTO gaia.executions (req_id)
-            VALUES (%s)
-            RETURNING execution_id
-        """, (req_id,))
+            INSERT INTO gaia.executions (req_id, input_token, output_token, total_tokens) VALUES (%s, %s, %s, %s) RETURNING execution_id
+        """, (req_id, input_token, output_token, total_tokens))
         execution_id = cursor.fetchone()[0]
         conn.commit()
         return execution_id
@@ -116,14 +114,14 @@ def insert_execution(req_id):
         st.sidebar.error(f"Error inserting into executions table: {e}")
         conn.rollback()
         return None
-
-def insert_step_run(execution_id, steps, generated_answer):
+    
+def insert_step_run(execution_id, steps, generated_answer, input_token, output_token, total_tokens):
     try:
         cursor.execute("""
-            INSERT INTO gaia.stepruns (execution_id, steps, generated_answer, isMatch)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO gaia.stepruns (execution_id, steps, generated_answer, isMatch, input_token, output_token, total_tokens)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING step_run_id
-        """, (execution_id, steps, generated_answer, False))
+        """, (execution_id, steps, generated_answer, False, input_token, output_token, total_tokens))
         step_run_id = cursor.fetchone()[0]
         conn.commit()
         return step_run_id
@@ -200,38 +198,46 @@ st.sidebar.write(prompt_text)
 if st.sidebar.button("Run Prompt", key="run_prompt_button"):
     if validate_input(st.session_state.dropdown_value):
         st.session_state.openai_response = "Fetching response from ChatGPT..."
+        
+        input_tokens_count = count_tokens(st.session_state.dropdown_value)
+        
         openai_response = get_openai_response(st.session_state.dropdown_value)
+        
+        output_tokens_count = count_tokens(openai_response)
+        
+        total_tokens = input_tokens_count + output_tokens_count
+        
+        st.sidebar.write(f"Total Input Tokens: {input_tokens_count}")
+        
+        st.sidebar.write(f"Total Output Tokens: {output_tokens_count}")
+        
+        st.sidebar.write(f"Total Tokens Used: {total_tokens}")
+        
         st.session_state.openai_response = openai_response
-
-        input_tokens_count=count_tokens(st.session_state.dropdown_value) 
-        openai_response=get_openai_response(st.session_state.dropdown_value) 
-       
-        output_tokens_count=count_tokens(openai_response) 
-       
-        total_tokens=input_tokens_count+output_tokens_count 
-        st.sidebar.write(f"Total Input Tokens: {input_tokens_count}") 
-        st.sidebar.write(f"Total Output Tokens: {output_tokens_count}") 
-        st.sidebar.write(f"Total Tokens Used: {total_tokens}") 
-
+        
         selected_question = st.session_state.dropdown_value
+        
         question_data = df[df['question'] == selected_question].iloc[0]
+        
         level = int(question_data['level']) if isinstance(question_data['level'], np.integer) else question_data['level']
+        
         actual_answer = question_data['final_answer']
-
+        
         req_id = get_or_create_task(level, selected_question, actual_answer)
         
         if req_id is not None:
-            execution_id = insert_execution(req_id)
+            execution_id = insert_execution(req_id, input_tokens_count, output_tokens_count, total_tokens)
+            
             if execution_id:
                 st.session_state.execution_id = execution_id
+                
                 st.sidebar.success(f"Execution recorded with ID: {execution_id}")
+                
             else:
                 st.sidebar.error("Failed to record execution")
-        else:
-            st.sidebar.error("Failed to get or create task")
+                
     else:
         st.sidebar.error("Please select a valid question.")
-        st.session_state.openai_response = "Run Prompt to get an answer from ChatGPT"
 
 col1, col2 = st.columns(2)
 
@@ -276,22 +282,22 @@ if st.button("Re-run Prompt", key="re_run_prompt_button"):
     if validate_input(st.session_state.dropdown_value) and validate_input(steps):
         st.session_state.openai_response = "Fetching response from ChatGPT..."
 
-        input_tokens_count = count_tokens(steps)
+        re_input_tokens_count = count_tokens(steps)
         
         re_run_response = get_openai_response(steps)
 
-        output_tokens_count = count_tokens(re_run_response)
+        re_output_tokens_count = count_tokens(re_run_response)
         
-        total_tokens = input_tokens_count + output_tokens_count
+        re_total_tokens = re_input_tokens_count + re_output_tokens_count
 
-        st.session_state.re_run_input_tokens = input_tokens_count
-        st.session_state.re_run_output_tokens = output_tokens_count
-        st.session_state.re_run_total_tokens = total_tokens
+        st.session_state.re_run_input_tokens = re_input_tokens_count
+        st.session_state.re_run_output_tokens = re_output_tokens_count
+        st.session_state.re_run_total_tokens = re_total_tokens
         
         st.session_state.openai_response = re_run_response
 
         if st.session_state.execution_id:
-            step_run_id = insert_step_run(st.session_state.execution_id, steps, re_run_response)
+            step_run_id = insert_step_run(st.session_state.execution_id, steps, re_run_response, re_input_tokens_count, re_output_tokens_count, re_total_tokens)
             if step_run_id:
                 st.session_state.step_run_id = step_run_id
                 st.sidebar.success(f"Step run recorded with ID: {step_run_id}")
