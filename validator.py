@@ -284,7 +284,7 @@ if st.button("Answers Match", key="answers_match_button"):
 
 steps = annotator_data.get('Steps', "No steps found.")
 
-z = dropdown_value+'\n'+'\n'+steps
+z = (dropdown_value or "No value selected") + '\n' + '\n' + steps
 
 st.markdown("##### Steps followed:")
 steps = st.text_area("Edit these steps and run again if validation fails", z, height=300)

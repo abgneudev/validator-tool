@@ -1,12 +1,10 @@
-streamlit
-random
-pandas
-psycopg2
-SQLAlchemy
 openai==0.28
+streamlit
+pandas
+psycopg2-binary
+SQLAlchemy
 numpy
 tiktoken
 plotly
 matplotlib
-ast
 python-dotenv
